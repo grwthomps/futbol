@@ -156,7 +156,6 @@ class StatTrackerTest < Minitest::Test
   end
 
   def test_rival
-    skip
     assert_equal "Houston Dash", @stat_tracker.rival("18")
   end
 
@@ -290,9 +289,13 @@ class StatTrackerTest < Minitest::Test
   end
 
   def test_biggest_bust
-    skip
     assert_equal "Montreal Impact", @stat_tracker.biggest_bust("20132014")
     assert_equal "Sporting Kansas City", @stat_tracker.biggest_bust("20142015")
+  end
+
+  def test_biggest_surprise
+    assert_equal "FC Cincinnati", @stat_tracker.biggest_surprise("20132014")
+    assert_equal "Minnesota United FC", @stat_tracker.biggest_surprise("20142015")
   end
 
   def test_most_tackles
