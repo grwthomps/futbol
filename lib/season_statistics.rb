@@ -9,7 +9,7 @@ module SeasonStatistics
   end
 
   def filter_game_teams_by_season_helper(season_id)
-    filtered_games = @game_teams.find_all do |game|
+    @game_teams.find_all do |game|
       @games[game.game_id].season == season_id
     end
   end
