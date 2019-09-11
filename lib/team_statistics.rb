@@ -11,17 +11,19 @@ module TeamStatistics
     }
   end
 
-  def best_season(team_id)
-    team_id = team_id.to_i
+  def filter_games_by_team(team_id)
     filtered_games = []
     @games.each do |game_id, game|
       if game.home_team_id == team_id || game.away_team_id == team_id
         filtered_games.push(game)
       end
     end
+    filtered_games
+  end
 
-    # MEMOIZATION
-    games_by_season = filtered_games.group_by(&:season)
+  def best_season(team_id)
+    team_id = team_id.to_i
+    games_by_season = filter_games_by_team(team_id).group_by(&:season)
 
     season_win_avg = Hash.new(0)
     games_by_season.each do |season, games|
@@ -39,16 +41,7 @@ module TeamStatistics
 
   def worst_season(team_id)
     team_id = team_id.to_i
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
-    games_by_season = filtered_games.group_by do |game|
-      game.season
-    end
+    games_by_season = filter_games_by_team(team_id).group_by(&:season)
 
     season_win_avg = Hash.new(0)
     games_by_season.each do |season, games|
@@ -66,25 +59,16 @@ module TeamStatistics
 
   def average_win_percentage(team_id)
     team_id = team_id.to_i
-
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
+    filtered_games = filter_games_by_team(team_id)
     wins = filtered_games.find_all do |game|
       (game.away_team_id == team_id && game.home_goals < game.away_goals) ||
       (game.home_team_id == team_id && game.home_goals > game.away_goals)
     end
-
     (wins.length.to_f / filtered_games.length).round(2)
   end
 
   def most_goals_scored(team_id)
     team_id = team_id.to_i
-
     filtered_games = game_teams.find_all do |game_team|
       game_team.team_id == team_id
     end
@@ -96,7 +80,6 @@ module TeamStatistics
 
   def fewest_goals_scored(team_id)
     team_id = team_id.to_i
-
     filtered_games = game_teams.find_all do |game_team|
       game_team.team_id == team_id
     end
@@ -107,28 +90,16 @@ module TeamStatistics
   end
 
   def favorite_opponent(team_id)
-    head_to_head(team_id).max_by do |team_name, win_average|
-      win_average
-    end[0]
+    head_to_head(team_id).max_by {|team_name, win_average| win_average}[0]
   end
 
   def rival(team_id)
-    head_to_head(team_id).min_by do |team_name, win_average|
-      win_average
-    end[0]
+    head_to_head(team_id).min_by {|team_name, win_average| win_average}[0]
   end
 
   def biggest_team_blowout(team_id)
     team_id = team_id.to_i
-
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
-    wins = filtered_games.find_all do |game|
+    wins = filter_games_by_team(team_id).find_all do |game|
       (game.away_team_id == team_id && game.home_goals < game.away_goals) ||
       (game.home_team_id == team_id && game.home_goals > game.away_goals)
     end
@@ -145,14 +116,7 @@ module TeamStatistics
   def worst_loss(team_id)
     team_id = team_id.to_i
 
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
-    losses = filtered_games.find_all do |game|
+    losses = filter_games_by_team(team_id).find_all do |game|
       (game.away_team_id == team_id && game.home_goals > game.away_goals) ||
       (game.home_team_id == team_id && game.home_goals < game.away_goals)
     end
@@ -176,12 +140,8 @@ module TeamStatistics
       if game.home_team_id == team_id || game.away_team_id == team_id
         filtered_games.push(game)
       end
-      opponents_home = filtered_games.group_by do |game_o|
-        game_o.home_team_id
-      end
-      opponents_away = filtered_games.group_by do |game_a|
-        game_a.away_team_id
-      end
+      opponents_home = filtered_games.group_by(&:home_team_id)
+      opponents_away = filtered_games.group_by(&:away_team_id)
       opponents = opponents_home.merge(opponents_away) do |team_id_m, home_value, away_value|
         home_value + away_value
       end
@@ -198,7 +158,7 @@ module TeamStatistics
   end
 
   def seasonal_summary(team_id)
-    all_seasons = @games.inject([]) do |seasons, (game_id, game)|
+    all_seasons = @games.inject([]) do |seasons, (_, game)|
       seasons << game.season
     end.uniq
 
