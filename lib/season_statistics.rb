@@ -1,15 +1,108 @@
 module SeasonStatistics
 
 
-  def biggest_bust(season)
-    games_by_team = @game_teams.group_by do |game_team|
-      game_team.team_id
-    end
-    games_by_team.each do |team_id, games|
-      ps_game = games.find_all do |game|
-        @games[game.game_id].type == "Postseason"
+  def biggest_bust(season_id)
+    filtered_games = []
+    @games.each do |game_id, game|
+      if game.season == season_id
+        filtered_games.push(game)
       end
     end
+
+    team_ids = @game_teams.map {|team| team.team_id}.uniq
+
+    biggest_bust = {}
+    team_ids.each do |team_id|
+      biggest_bust[team_id] ||= {postseason: {games: [], win_avg: 0},
+                                 regular_season: {games: [], win_avg: 0}}
+
+      filtered_games.each do |game|
+        if game.home_team_id == team_id || game.away_team_id == team_id
+          biggest_bust[team_id][:postseason][:games].push(game) if game.type == "Postseason"
+          biggest_bust[team_id][:regular_season][:games].push(game) if game.type == "Regular Season"
+        end
+      end
+    end
+
+    biggest_bust.each do |team_id, seasons|
+      seasons.each do |season_type, hash_pair|
+        win_avg = 0
+        hash_pair.each do |key, value|
+          if key == :games
+            win_avg = (value.find_all do |game|
+              (game.away_team_id == team_id && game.home_goals < game.away_goals) ||
+              (game.home_team_id == team_id && game.home_goals > game.away_goals)
+            end.length.to_f) / value.length
+          end
+        end
+        biggest_bust[team_id][season_type][:win_avg] = win_avg
+      end
+    end
+
+    team_with_biggest_bust = nil
+    biggest_bust_difference = 0
+    biggest_bust.each do |team_id, seasons|
+      seasons[:regular_season][:win_avg] = 0 if seasons[:regular_season][:win_avg].nan?
+      seasons[:postseason][:win_avg] = 0 if seasons[:postseason][:win_avg].nan?
+      difference = seasons[:regular_season][:win_avg] - seasons[:postseason][:win_avg]
+      if difference > biggest_bust_difference
+        biggest_bust_difference = difference
+        team_with_biggest_bust = team_id
+      end
+    end
+    @teams[team_with_biggest_bust].team_name
+  end
+
+  def biggest_surprise(season_id)
+    filtered_games = []
+    @games.each do |game_id, game|
+      if game.season == season_id
+        filtered_games.push(game)
+      end
+    end
+
+    team_ids = @game_teams.map {|team| team.team_id}.uniq
+
+    biggest_surprise = {}
+    team_ids.each do |team_id|
+      biggest_surprise[team_id] ||= {postseason: {games: [], win_avg: 0},
+                                 regular_season: {games: [], win_avg: 0}}
+
+      filtered_games.each do |game|
+        if game.home_team_id == team_id || game.away_team_id == team_id
+          biggest_surprise[team_id][:postseason][:games].push(game) if game.type == "Postseason"
+          biggest_surprise[team_id][:regular_season][:games].push(game) if game.type == "Regular Season"
+        end
+      end
+    end
+
+    biggest_surprise.each do |team_id, seasons|
+      seasons.each do |season_type, hash_pair|
+        win_avg = 0
+        hash_pair.each do |key, value|
+          if key == :games
+            win_avg = (value.find_all do |game|
+              (game.away_team_id == team_id && game.home_goals < game.away_goals) ||
+              (game.home_team_id == team_id && game.home_goals > game.away_goals)
+            end.length.to_f) / value.length
+          end
+        end
+        biggest_surprise[team_id][season_type][:win_avg] = win_avg
+      end
+    end
+
+    team_with_biggest_surprise = nil
+    biggest_surprise_difference = 0
+    biggest_surprise.each do |team_id, seasons|
+      seasons[:regular_season][:win_avg] = 0 if seasons[:regular_season][:win_avg].nan?
+      seasons[:postseason][:win_avg] = 0 if seasons[:postseason][:win_avg].nan?
+      difference = seasons[:postseason][:win_avg] - seasons[:regular_season][:win_avg]
+      if difference > biggest_surprise_difference
+        biggest_surprise_difference = difference
+        team_with_biggest_surprise = team_id
+      end
+    end
+    @teams[team_with_biggest_surprise].team_name
   end
 
   def most_tackles(season_id)
