@@ -107,57 +107,15 @@ module TeamStatistics
   end
 
   def favorite_opponent(team_id)
-    team_id = team_id.to_i
-
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
-    losses = filtered_games.find_all do |game|
-      (game.away_team_id == team_id && game.home_goals >= game.away_goals) ||
-      (game.home_team_id == team_id && game.home_goals <= game.away_goals)
-    end
-
-    group = Hash.new(0)
-    losses.each do |game|
-      if game.home_team_id == team_id
-        group[game.away_team_id] += 1
-      elsif game.away_team_id == team_id
-        group[game.home_team_id] += 1
-      end
-    end
-    team_id = (group.min_by {|key, value| value})[0]
-    @teams[team_id].team_name
+    head_to_head(team_id).max_by do |team_name, win_average|
+      win_average
+    end[0]
   end
 
   def rival(team_id)
-    team_id = team_id.to_i
-
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
-    losses = filtered_games.find_all do |game|
-      (game.away_team_id == team_id && game.home_goals >= game.away_goals) ||
-      (game.home_team_id == team_id && game.home_goals <= game.away_goals)
-    end
-
-    group = Hash.new(0)
-    losses.each do |game|
-      if game.home_team_id == team_id
-        group[game.away_team_id] += 1
-      elsif game.away_team_id == team_id
-        group[game.home_team_id] += 1
-      end
-    end
-    team_id = (group.max_by {|key, value| value})[0]
-    @teams[team_id].team_name
+    head_to_head(team_id).min_by do |team_name, win_average|
+      win_average
+    end[0]
   end
 
   def biggest_team_blowout(team_id)
