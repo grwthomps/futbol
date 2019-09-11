@@ -162,17 +162,8 @@ module TeamStatistics
       seasons << game.season
     end.uniq
 
-
     team_id = team_id.to_i
-    filtered_games = []
-
-    @games.each do |game_id, game|
-      if game.home_team_id == team_id || game.away_team_id == team_id
-        filtered_games.push(game)
-      end
-    end
-
-    games_by_season = filtered_games.group_by do |fil_game|
+    games_by_season = filter_games_by_team(team_id).group_by do |fil_game|
       fil_game.season
     end
 
@@ -228,14 +219,9 @@ module TeamStatistics
     }
 
     all_seasons.each do |season|
-      if !season_summary[season].has_key?(:postseason)
-        season_summary[season][:postseason] = empty_summary
-      end
-      if !season_summary[season].has_key?(:regular_season)
-        season_summary[season][:regular_season] = empty_summary
-      end
+      season_summary[season][:postseason] = empty_summary if !season_summary[season].has_key?(:postseason)
+      season_summary[season][:regular_season] = empty_summary if !season_summary[season].has_key?(:regular_season)
     end
-
     season_summary
   end
 
