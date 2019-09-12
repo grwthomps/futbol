@@ -1,30 +1,36 @@
 module SeasonStatistics
 
-
-  def biggest_bust(season_id)
+  def filter_games_by_season_helper(season_id)
     filtered_games = []
     @games.each do |game_id, game|
-      if game.season == season_id
-        filtered_games.push(game)
-      end
+      filtered_games.push(game) if game.season == season_id
     end
+    filtered_games
+  end
 
+  def filter_game_teams_by_season_helper(season_id)
+    @game_teams.find_all do |game|
+      @games[game.game_id].season == season_id
+    end
+  end
+
+  def win_avg_by_season_type(season_id)
     team_ids = @game_teams.map {|team| team.team_id}.uniq
 
-    biggest_bust = {}
+    biggest_hash = {}
     team_ids.each do |team_id|
-      biggest_bust[team_id] ||= {postseason: {games: [], win_avg: 0},
+      biggest_hash[team_id] ||= {postseason: {games: [], win_avg: 0},
                                  regular_season: {games: [], win_avg: 0}}
 
-      filtered_games.each do |game|
+      filter_games_by_season_helper(season_id).each do |game|
         if game.home_team_id == team_id || game.away_team_id == team_id
-          biggest_bust[team_id][:postseason][:games].push(game) if game.type == "Postseason"
-          biggest_bust[team_id][:regular_season][:games].push(game) if game.type == "Regular Season"
+          biggest_hash[team_id][:postseason][:games].push(game) if game.type == "Postseason"
+          biggest_hash[team_id][:regular_season][:games].push(game) if game.type == "Regular Season"
         end
       end
     end
 
-    biggest_bust.each do |team_id, seasons|
+    biggest_hash.each do |team_id, seasons|
       seasons.each do |season_type, hash_pair|
         win_avg = 0
         hash_pair.each do |key, value|
@@ -35,10 +41,14 @@ module SeasonStatistics
             end.length.to_f) / value.length
           end
         end
-        biggest_bust[team_id][season_type][:win_avg] = win_avg
+        biggest_hash[team_id][season_type][:win_avg] = win_avg
       end
     end
+    biggest_hash
+  end
 
+  def biggest_bust(season_id)
+    biggest_bust = win_avg_by_season_type(season_id)
     team_with_biggest_bust = nil
     biggest_bust_difference = 0
     biggest_bust.each do |team_id, seasons|
@@ -54,42 +64,7 @@ module SeasonStatistics
   end
 
   def biggest_surprise(season_id)
-    filtered_games = []
-    @games.each do |game_id, game|
-      if game.season == season_id
-        filtered_games.push(game)
-      end
-    end
-
-    team_ids = @game_teams.map {|team| team.team_id}.uniq
-
-    biggest_surprise = {}
-    team_ids.each do |team_id|
-      biggest_surprise[team_id] ||= {postseason: {games: [], win_avg: 0},
-                                 regular_season: {games: [], win_avg: 0}}
-
-      filtered_games.each do |game|
-        if game.home_team_id == team_id || game.away_team_id == team_id
-          biggest_surprise[team_id][:postseason][:games].push(game) if game.type == "Postseason"
-          biggest_surprise[team_id][:regular_season][:games].push(game) if game.type == "Regular Season"
-        end
-      end
-    end
-
-    biggest_surprise.each do |team_id, seasons|
-      seasons.each do |season_type, hash_pair|
-        win_avg = 0
-        hash_pair.each do |key, value|
-          if key == :games
-            win_avg = (value.find_all do |game|
-              (game.away_team_id == team_id && game.home_goals < game.away_goals) ||
-              (game.home_team_id == team_id && game.home_goals > game.away_goals)
-            end.length.to_f) / value.length
-          end
-        end
-        biggest_surprise[team_id][season_type][:win_avg] = win_avg
-      end
-    end
+    biggest_surprise = win_avg_by_season_type(season_id)
 
     team_with_biggest_surprise = nil
     biggest_surprise_difference = 0
@@ -106,10 +81,7 @@ module SeasonStatistics
   end
 
   def most_tackles(season_id)
-    filtered_games = @game_teams.find_all do |game|
-      @games[game.game_id].season == season_id
-    end
-
+    filtered_games = filter_game_teams_by_season_helper(season_id)
     games_by_teams = filtered_games.group_by(&:team_id)
 
     most_tackles_team_id = nil
@@ -125,10 +97,7 @@ module SeasonStatistics
   end
 
   def fewest_tackles(season_id)
-    filtered_games = @game_teams.find_all do |game|
-      @games[game.game_id].season == season_id
-    end
-
+    filtered_games = filter_game_teams_by_season_helper(season_id)
     games_by_teams = filtered_games.group_by(&:team_id)
 
     fewest_tackles_team_id = nil
@@ -144,17 +113,13 @@ module SeasonStatistics
   end
 
   def least_accurate_team(season_id)
-    filtered_games = @game_teams.find_all do |game|
-      @games[game.game_id].season == season_id
-    end
-
+    filtered_games = filter_game_teams_by_season_helper(season_id)
     games_by_teams = filtered_games.group_by(&:team_id)
 
     lowest_ratio_team_id = nil
     lowest_ratio = 10
     games_by_teams.each do |team_id, games_arr|
       shot_ratio = games_arr.sum(&:goals).to_f / games_arr.sum(&:shots)
-      # require 'pry'; binding.pry
       if shot_ratio < lowest_ratio
         lowest_ratio_team_id = team_id
         lowest_ratio = shot_ratio
@@ -164,15 +129,11 @@ module SeasonStatistics
   end
 
   def most_accurate_team(season_id)
-    filtered_games = @game_teams.find_all do |game|
-      @games[game.game_id].season == season_id
-    end
-
-    games_by_teams = filtered_games.group_by(&:team_id)
+    filtered_games = filter_game_teams_by_season_helper(season_id)
 
     highest_ratio_team_id = nil
     highest_ratio = 10
-    games_by_teams.each do |team_id, games_arr|
+    filtered_games.group_by(&:team_id).each do |team_id, games_arr|
       shot_ratio = games_arr.sum(&:shots).to_f / games_arr.sum(&:goals)
       if shot_ratio < highest_ratio
         highest_ratio_team_id = team_id
@@ -183,15 +144,10 @@ module SeasonStatistics
   end
 
   def winningest_coach(season_id)
-    filtered_games = @game_teams.find_all do |game|
-      @games[game.game_id].season == season_id
-    end
-
-    games_by_coaches = filtered_games.group_by(&:head_coach)
-
+    filtered_games = filter_game_teams_by_season_helper(season_id)
     most_wins_coach_name = nil
     highest_win_percentage = 0
-    games_by_coaches.each do |coach_name, games_arr|
+    filtered_games.group_by(&:head_coach).each do |coach_name, games_arr|
       win_percentage = (games_arr.find_all do |game|
         game.result == "WIN"
       end.length).to_f / games_arr.length
@@ -204,15 +160,10 @@ module SeasonStatistics
   end
 
   def worst_coach(season_id)
-    filtered_games = @game_teams.find_all do |game|
-      @games[game.game_id].season == season_id
-    end
-
-    games_by_coaches = filtered_games.group_by(&:head_coach)
-
+    filtered_games = filter_game_teams_by_season_helper(season_id)
     fewest_wins_coach_name = nil
     lowest_win_percentage = 100
-    games_by_coaches.each do |coach_name, games_arr|
+    filtered_games.group_by(&:head_coach).each do |coach_name, games_arr|
       win_percentage = (games_arr.find_all do |game|
         game.result == "WIN"
       end.length).to_f / games_arr.length

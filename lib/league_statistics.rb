@@ -4,12 +4,6 @@ module LeagueStatistics
     @teams.length
   end
 
-  def team_name_helper(found_team_id)
-    @teams.select do |team_id_key, team|
-      found_team_id == team_id_key
-    end[found_team_id].team_name
-  end
-
   def goal_avg_helper
     games_by_team = @game_teams.group_by(&:team_id)
     goal_avg_by_team = {}
@@ -35,13 +29,13 @@ module LeagueStatistics
   def best_offense
     goal_avg_by_team ||= goal_avg_helper
     found_team_id = goal_avg_by_team.key(goal_avg_by_team.values.max_by { |value| value})
-    team_name_helper(found_team_id)
+    @teams[found_team_id].team_name
   end
 
   def worst_offense
     goal_avg_by_team ||= goal_avg_helper
     found_team_id = goal_avg_by_team.key(goal_avg_by_team.values.min_by { |value| value})
-    team_name_helper(found_team_id)
+    @teams[found_team_id].team_name
   end
 
   def defense_helper
@@ -62,7 +56,6 @@ module LeagueStatistics
         away_teams[game.away_team_id].push(game.home_goals)
       end
     end
-
     teams = home_teams.merge(away_teams) { |team_id, home_team_val, away_team_val| home_team_val + away_team_val}
 
     goal_avg_by_team = {}
@@ -76,44 +69,41 @@ module LeagueStatistics
   def best_defense
     goal_avg_by_team ||= defense_helper
     best_defense = goal_avg_by_team.key(goal_avg_by_team.values.min_by { |value| value})
-    team_name_helper(best_defense)
+    @teams[best_defense].team_name
   end
 
   def worst_defense
     goal_avg_by_team ||= defense_helper
     worst_defense = goal_avg_by_team.key(goal_avg_by_team.values.max_by { |value| value})
-    team_name_helper(worst_defense)
+    @teams[worst_defense].team_name
   end
 
   def highest_scoring_visitor
     goal_avg_by_team ||= goal_avg_by_hoa_helper("away")
     highest_team_id = goal_avg_by_team.key(goal_avg_by_team.values.max_by { |value| value})
-    team_name_helper(highest_team_id)
+    @teams[highest_team_id].team_name
   end
 
   def highest_scoring_home_team
     goal_avg_by_team ||= goal_avg_by_hoa_helper("home")
     highest_team_id = goal_avg_by_team.key(goal_avg_by_team.values.max_by { |value| value})
-    team_name_helper(highest_team_id)
+    @teams[highest_team_id].team_name
   end
 
   def lowest_scoring_visitor
     goal_avg_by_team ||= goal_avg_by_hoa_helper("away")
     highest_team_id = goal_avg_by_team.key(goal_avg_by_team.values.min_by { |value| value})
-    team_name_helper(highest_team_id)
+    @teams[highest_team_id].team_name
   end
 
   def lowest_scoring_home_team
     goal_avg_by_team ||= goal_avg_by_hoa_helper("home")
     highest_team_id = goal_avg_by_team.key(goal_avg_by_team.values.min_by { |value| value})
-    team_name_helper(highest_team_id)
+    @teams[highest_team_id].team_name
   end
 
   def winningest_team
-    games_by_team = @game_teams.group_by do |game_team|
-      game_team.team_id
-    end
-
+    games_by_team = @game_teams.group_by(&:team_id)
     win_avg_by_team = {}
     games_by_team.each do |team_id, games_arr|
       won_games = games_arr.find_all do |game|
@@ -122,16 +112,11 @@ module LeagueStatistics
       win_avg_by_team[team_id] = (won_games.to_f / games_arr.length).round(2)
     end
     highest_team_id = win_avg_by_team.key(win_avg_by_team.values.max_by { |value| value})
-      @teams.select do |team_id, team|
-        highest_team_id == team_id
-    end[highest_team_id].team_name
+    @teams[highest_team_id].team_name
   end
 
   def best_fans
-    games_by_team = @game_teams.group_by do |game_team|
-      game_team.team_id
-    end
-
+    games_by_team = @game_teams.group_by(&:team_id)
     avg_by_team = {}
     games_by_team.each do |team_id, games_arr|
       home_won_games = games_arr.find_all do |game|
@@ -144,21 +129,14 @@ module LeagueStatistics
 
       home = home_won_games.to_f / games_arr.length
       away = away_won_games.to_f / games_arr.length
-
       avg_by_team[team_id] = (home - away).round(2)
     end
-
     highest_team_id = avg_by_team.key(avg_by_team.values.max_by { |value| value})
-      @teams.select do |team_id, team|
-        highest_team_id == team_id
-    end[highest_team_id].team_name
+    @teams[highest_team_id].team_name
   end
 
   def worst_fans
-    games_by_team = @game_teams.group_by do |game_team|
-      game_team.team_id
-    end
-
+    games_by_team = @game_teams.group_by(&:team_id)
     worst_fans_teams = []
     games_by_team.each do |team_id, games_arr|
       home_won_games = games_arr.find_all do |game|
